@@ -35,6 +35,7 @@ class Model(nn.Module):
             ssm_drop_rate=config.dropout,
             mlp_ratio=config.r_ff,
             mlp_drop_rate=config.dropout,
+            drop_path_rate=config.dropout,
         )
         print(self.mamba)
 

@@ -3,10 +3,27 @@ import math
 import torch
 import torch.nn as nn
 from einops import repeat
-from timm.models.layers import DropPath, trunc_normal_
 from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 
-DropPath.__repr__ = lambda self: f"timm.DropPath({self.drop_prob})"
+
+def drop_path(x, drop_prob: float = 0.0, training: bool = False):
+    if drop_prob == 0.0 or not training:
+        return x
+    keep_prob = 1 - drop_prob
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)
+    random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
+    random_tensor.floor_()
+    output = x.div(keep_prob) * random_tensor
+    return output
+
+
+class DropPath(nn.Module):
+    def __init__(self, drop_prob=None):
+        super(DropPath, self).__init__()
+        self.drop_prob = drop_prob
+
+    def forward(self, x):
+        return drop_path(x, self.drop_prob, self.training)
 
 
 class QuadMamba(nn.Module):
@@ -23,7 +40,7 @@ class QuadMamba(nn.Module):
         dt_init="random",
         dt_scale=1.0,
         dt_init_floor=1e-4,
-        dropout=0.0,
+        dropout=0.1,
         conv_bias=True,
         bias=False,
         device=None,
@@ -356,18 +373,18 @@ class MambaformerLayer(nn.Module):
     def __init__(
         self,
         hidden_dim: int,
-        drop_path: float = 0.0,
+        drop_path_rate: float = 0.1,
         norm_layer: nn.Module = nn.LayerNorm,
         # ==== ssm
         ssm_d_state: int = 16,
         ssm_expand: int = 1,
         ssm_conv: int = 3,
         ssm_directions: int = 2,
-        ssm_drop_rate: float = 0.0,
+        ssm_drop_rate: float = 0.1,
         # ==== mlp
         mlp_ratio: float = 4.0,
         mlp_act_layer: nn.Module = nn.GELU,
-        mlp_drop_rate: float = 0.0,
+        mlp_drop_rate: float = 0.1,
         gmlp: bool = False,
         **kwargs,
     ):
@@ -401,7 +418,7 @@ class MambaformerLayer(nn.Module):
             )
 
         if self.mamba_branch or self.mlp_branch:
-            self.drop_path = DropPath(drop_path)
+            self.drop_path_ly = DropPath(drop_path_rate)
 
     def forward(self, input: torch.Tensor):
         # input: (b, h, w, c)
@@ -409,10 +426,10 @@ class MambaformerLayer(nn.Module):
         x = input
 
         if self.mamba_branch:
-            x = x + self.drop_path(self.mamba(self.norm(input)))  # SSM
+            x = x + self.drop_path_ly(self.mamba(self.norm(input)))  # SSM
 
         if self.mlp_branch:
-            x = x + self.drop_path(self.mlp(self.norm2(x)))  # FFN
+            x = x + self.drop_path_ly(self.mlp(self.norm2(x)))  # FFN
 
         return x
 
@@ -422,8 +439,8 @@ class Mambaformer(nn.Module):
     Args:
         dim (int): Number of input channels.
         depth (int): Number of blocks.
-        attn_drop (float, optional): Attention dropout rate. Default: 0.0
-        drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
+        attn_drop (float, optional): Attention dropout rate. Default: 0.1
+        drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.1
         norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
     """
 
@@ -432,14 +449,14 @@ class Mambaformer(nn.Module):
         dim,
         depth,
         expand=2,
-        ssm_drop_rate=0.0,
-        drop_path=0.0,
+        ssm_drop_rate=0.1,
+        drop_path_rate=0.1,
         norm_layer=nn.LayerNorm,
         ssm_d_state=16,
         ssm_conv=3,
         ssm_directions=2,
         mlp_ratio=0,
-        mlp_drop_rate=0.0,
+        mlp_drop_rate=0.1,
         **kwargs,
     ):
         super().__init__()
@@ -455,8 +472,8 @@ class Mambaformer(nn.Module):
                     ssm_drop_rate=ssm_drop_rate,
                     mlp_ratio=mlp_ratio,
                     mlp_drop_rate=mlp_drop_rate,
-                    drop_path=(
-                        drop_path[i] if isinstance(drop_path, list) else drop_path
+                    drop_path_rate=(
+                        drop_path_rate[i] if isinstance(drop_path_rate, list) else drop_path_rate
                     ),
                     norm_layer=norm_layer,
                     **kwargs,
@@ -486,14 +503,14 @@ class MambaForSeriesForecasting(nn.Module):
         ssm_drop_rate=0.1,
         mlp_ratio=4,
         mlp_drop_rate=0.1,
-        drop_path_rate=0.0,
+        drop_path_rate=0.1,
         norm_layer=nn.LayerNorm,
     ):
         super().__init__()
         self.num_layers = len(depths)
 
         # stochastic depth decay rule
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
+        dpr = torch.linspace(0, drop_path_rate, sum(depths) + 1)[1:].tolist()
 
         # build layers
         self.layers = nn.ModuleList()
@@ -508,7 +525,7 @@ class MambaForSeriesForecasting(nn.Module):
                 ssm_drop_rate=ssm_drop_rate,
                 mlp_ratio=mlp_ratio,
                 mlp_drop_rate=mlp_drop_rate,
-                drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
+                drop_path_rate=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
                 norm_layer=norm_layer,
             )
             self.layers.append(layer)
@@ -519,7 +536,7 @@ class MambaForSeriesForecasting(nn.Module):
 
     def _init_weights(self, m: nn.Module):
         if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=0.02)
+            nn.init.trunc_normal_(m.weight, std=0.02)
             if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.LayerNorm):
