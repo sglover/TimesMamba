@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from layers.Embed import SeriesEmbedding
-from layers.RevIN import RevIN
-from model.mambacore import MambaForSeriesForecasting
+from timesmamba.layers.Embed import SeriesEmbedding
+from timesmamba.layers.RevIN import RevIN
+from timesmamba.model.mambacore import MambaForSeriesForecasting
 
 
 class Model(nn.Module):

@@ -1,9 +1,10 @@
 import torch
 
-import loggingutil
-from model import (
+from timesmamba.model import (
     TimesMamba,
 )
+from . import loggingutil
+
 
 logger = loggingutil.get_logger(__name__)
 
