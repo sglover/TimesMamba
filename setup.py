@@ -1,0 +1,98 @@
+from setuptools import setup, find_packages
+from os import path
+from io import open
+
+here = path.abspath(path.dirname(__file__))
+
+with open(path.join(here, '../README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+    
+setup(
+    name='TimesMamba',
+    version='0.1.0',
+    description='',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    url='',
+    author='',
+    author_email='',
+    classifiers=[
+        # 3 - Alpha
+        # 4 - Beta
+        # 5 - Production/Stable
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: ',
+        'Topic :: ',
+        'License :: ',
+        'Programming Language :: Python :: 3.11',
+        'Private :: Do Not Upload to pypi server',
+    ],
+    keywords='',
+    packages=find_packages(),
+    python_requires='>=3.11',
+    install_requires=[
+        "attrs==25.3.0",
+        "Automat==25.4.16",
+        "buildtools==1.0.6",
+        "causal-conv1d==1.1.0",
+        "certifi==2025.4.26",
+        "charset-normalizer==3.4.1",
+        "constantly==23.10.4",
+        "contourpy==1.3.2",
+        "cycler==0.12.1",
+        "docopt==0.6.2",
+        "einops==0.8.1",
+        "filelock==3.13.1",
+        "fonttools==4.57.0",
+        "fsspec==2024.6.1",
+        "furl==2.1.4",
+        "greenlet==3.2.1",
+        "huggingface-hub==0.30.2",
+        "hyperlink==21.0.0",
+        "idna==3.10",
+        "incremental==24.7.2",
+        "Jinja2==3.1.4",
+        "joblib==1.4.2",
+        "kiwisolver==1.4.8",
+        "mamba-ssm==1.1.0",
+        "MarkupSafe==2.1.5",
+        "matplotlib==3.10.1",
+        "mpmath==1.3.0",
+        "networkx==3.3",
+        "ninja==1.11.1.4",
+        "numpy==1.26.4",
+        "orderedmultidict==1.0.1",
+        "packaging==25.0",
+        "pandas==2.2.3",
+        "pillow==11.2.1",
+        "pyparsing==3.2.3",
+        "python-dateutil==2.9.0.post0",
+        "pytz==2025.2",
+        "PyYAML==6.0.2",
+        "redo==3.0.0",
+        "regex==2024.11.6",
+        "requests==2.32.3",
+        "safetensors==0.5.3",
+        "scikit-learn==1.6.1",
+        "scipy==1.15.2",
+        "simplejson==3.20.1",
+        "six==1.17.0",
+        "SQLAlchemy==2.0.40",
+        "sympy==1.13.3",
+        "threadpoolctl==3.6.0",
+        "tokenizers==0.21.1",
+        "torch==2.1.2+cu121",
+        "tqdm==4.67.1",
+        "transformers==4.51.3",
+        "triton==2.1.0",
+        "Twisted==24.11.0",
+        "typing_extensions==4.12.2",
+        "tzdata==2025.2",
+        "urllib3==2.4.0",
+        "zope.interface==7.2"
+    ],
+    extras_require={
+        'dev': [],
+        'test': [],
+    },
+)
